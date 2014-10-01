@@ -16,6 +16,6 @@ Run using the command line python acmdownload.py.
 
 # Finding the UID of a paper
 
-Search for a paper on [dl.acm.org](dl.acm.org) and go to its page. For example the page for the paper "Spanner: Google's globally-distributed database" from OSDI'06 has the url [http://dl.acm.org/citation.cfm?id=2387880.2387905&coll=DL&dl=GUIDE&CFID=236350197&CFTOKEN=90827288](http://dl.acm.org/citation.cfm?id=2387880.2387905&coll=DL&dl=GUIDE&CFID=236350197&CFTOKEN=90827288). The UID is the string 2387905, which is the part of the id argument after the dot. If there is no dot then the UID is the entire id argument.
+Search for a paper on [dl.acm.org](dl.acm.org) and go to its page. For example the page for the paper "Spanner: Google's globally-distributed database" from OSDI'12 has the url [http://dl.acm.org/citation.cfm?id=2387880.2387905&coll=DL&dl=GUIDE&CFID=236350197&CFTOKEN=90827288](http://dl.acm.org/citation.cfm?id=2387880.2387905&coll=DL&dl=GUIDE&CFID=236350197&CFTOKEN=90827288). The UID is the string 2387905, which is the part of the id argument after the dot. If there is no dot then the UID is the entire id argument.
 
 Change the uid global variable in the script to the uid for your paper. The documents_to_download global variable is the total number of documents to include in the set before ranking them according to number of references from within the set.
