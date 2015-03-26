@@ -1,44 +1,52 @@
 from HTMLParser import HTMLParser
 import json
-import time
 import requests
+import sqlite3
 
-def _decode_list(data):
-    rv = []
-    for item in data:
-        if isinstance(item, unicode):
-            item = item.encode('utf-8')
-        elif isinstance(item, list):
-            item = _decode_list(item)
-        elif isinstance(item, dict):
-            item = _decode_dict(item)
-        rv.append(item)
-    return rv
+FILE_NAME = 'docs.json'
+DB_NAME = 'docs.db'
 
-def _decode_dict(data):
-    rv = {}
-    for key, value in data.iteritems():
-        if isinstance(key, unicode):
-            key = key.encode('utf-8')
-        if isinstance(value, unicode):
-            value = value.encode('utf-8')
-        elif isinstance(value, list):
-            value = _decode_list(value)
-        elif isinstance(value, dict):
-            value = _decode_dict(value)
-        rv[key] = value
-    return rv
-
-def load_docs():
+def load_docs_file():
     try:
-        with open('docs.json', 'r') as f:
-            return json.load(f, object_hook = _decode_dict)
+        with open(FILE_NAME, 'r') as f:
+            return json.load(f)
     except:
         return {}
 
-def save_docs(docs):
-    with open('docs.json', 'w') as f:
+def save_docs_file(docs):
+    with open(FILE_NAME, 'w') as f:
         json.dump(docs, f)
+
+def copy_file_to_db():
+    docs = load_docs_file()
+    con = sqlite3.connect(DB_NAME)
+    cur = con.cursor()
+    cur.execute('CREATE TABLE IF NOT EXISTS docs (uid TEXT NOT NULL PRIMARY KEY, doc TEXT NOT NULL)')
+    con.commit()
+    for uid in docs:
+        doc = docs[uid]
+        cur.execute('INSERT INTO docs (uid, doc) VALUES (?, ?)', (uid, json.dumps(doc, ensure_ascii = False)))
+    con.commit()
+    con.close()
+
+def load_docs():
+    docs = {}
+    con = sqlite3.connect(DB_NAME)
+    cur = con.cursor()
+    cur.execute('CREATE TABLE IF NOT EXISTS docs (uid TEXT NOT NULL PRIMARY KEY, doc TEXT NOT NULL)')
+    con.commit()
+    cur.execute('SELECT uid, doc FROM docs')
+    for row in cur.fetchall():
+        docs[row[0]] = json.loads(row[1])
+    con.close()
+    return docs
+
+def save_doc(uid, doc):
+    con = sqlite3.connect(DB_NAME)
+    cur = con.cursor()
+    cur.execute('INSERT INTO docs (uid, doc) VALUES (?, ?)', (uid, json.dumps(doc, ensure_ascii = False)))
+    con.commit()
+    con.close()
 
 class PageParser(HTMLParser):
     def __init__(self):
@@ -72,7 +80,7 @@ def download_doc(uid):
     r = requests.get(url, cookies = cookies, headers = {'User-Agent':'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.114 Safari/537.36'})
     cookies.update(r.cookies)
     parser = PageParser()
-    parser.feed(r.content)
+    parser.feed(r.text)
     return parser.doc
 
 def get_top_ranked(docs, missing):
@@ -113,7 +121,8 @@ def download(orig, num_docs):
             print '%s: Downloading %s...' % (len(docs) + 1, uid)
             doc = download_doc(uid)
             all_docs[uid] = doc
-            save_docs(all_docs)
+            save_doc(uid, doc)
+            #save_docs(all_docs)
 
         docs[uid] = doc
         doc_uids = set(doc['references']) | set(doc['citedby'])
@@ -139,11 +148,25 @@ def mostreferenced(docs, orig):
         doc = docs[uid]
         print '%3d, %8s, %3d (%3d), %s. %s: %s' % (i + 1, uid, cnt, len(doc['citedby']), doc['date'] if 'date' in doc else '??/??/????', doc['authors'] if 'authors' in doc else '???', doc['title'] if 'title' in doc else '???')
 
-def info(docs, uid):
-    doc = docs[uid]
+def info(doc):
     for (key, value) in doc.items():
         if key not in ['references', 'citedby']:
             print '%s: %s' % (key, value)
+    print 'references: %s' % len(doc['references'])
+    print 'cited by: %s' % len(doc['citedby'])
+
+def remove_uid_file(uid):
+    docs = load_docs_file()
+    if uid in docs:
+        del docs[uid]
+    save_docs_file(docs)
+
+def remove_uid(uid):
+    con = sqlite3.connect(DB_NAME)
+    cur = con.cursor()
+    cur.execute('DELETE FROM docs WHERE uid=?', (uid,))
+    con.commit()
+    con.close()
 
 def remove_missing_meta():
     docs = load_docs()
@@ -151,19 +174,14 @@ def remove_missing_meta():
     for uid in uids:
         doc = docs[uid]
         if len(set(doc.keys()) - set(['references', 'citedby'])) == 0:
+            remove_uid(uid)
             del docs[uid]
-    save_docs(docs)
-
-def remove_uid(uid):
-    docs = load_docs()
-    if uid in docs:
-        del docs[uid]
-    save_docs(docs)
+    #save_docs(docs)
 
 uid = '2387905'
 documents_to_download = 250
 docs = download(uid, documents_to_download)
-info(docs, uid)
+info(docs[uid])
 mostreferenced(docs, uid)
 #remove_uid('2611484')
 #remove_missing_meta()
