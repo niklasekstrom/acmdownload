@@ -9,7 +9,7 @@ Do not try to modify the script to download many documents in parallel; at some 
 # Installing and running:
 
 * Download and install the latest release of [Python 3](https://www.python.org/downloads/).
-* Install the [requests](http://docs.python-requests.org/en/latest/) library: run the command pip3 install requests. [More info](http://docs.python-requests.org/en/latest/user/install/).
+* Install the [requests](https://pypi.org/project/requests/) library: run the command pip3 install requests.
 
 Run using the command line python acmdownload.py.
 
